@@ -1,0 +1,64 @@
+{
+  "name": "make-tex-templete",
+  "displayName": "MakeTeXTemplete",
+  "description": "Generate LaTeX paper and slide templates from the VSCode explorer context menu.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:makeTeXTemplete.makePaperTemplete",
+    "onCommand:makeTeXTemplete.makeSlideTemplete"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "MakeTeXTemplete",
+      "properties": {
+        "makeTeXTemplete.templateConfigPath": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to a JSON config file for custom template sources. Relative paths are resolved from the workspace folder."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "makeTeXTemplete.makePaperTemplete",
+        "title": "MakePaperTemplete"
+      },
+      {
+        "command": "makeTeXTemplete.makeSlideTemplete",
+        "title": "MakeSlideTemplete"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "makeTeXTemplete.makePaperTemplete",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@100"
+        },
+        {
+          "command": "makeTeXTemplete.makeSlideTemplete",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@101"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.5"
+  }
+}

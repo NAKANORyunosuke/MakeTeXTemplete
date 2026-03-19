@@ -1,0 +1,2 @@
+Replace this placeholder with any file you want copied alongside the paper template.
+PDF, PNG, CSV, and other binary files are also supported because assets are copied as raw bytes.

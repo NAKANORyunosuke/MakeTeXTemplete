@@ -1,0 +1,8 @@
+{
+  "paper": {
+    "templateDirectory": "./examples/folder-templates/paper"
+  },
+  "slide": {
+    "templateDirectory": "./examples/folder-templates/slide"
+  }
+}

@@ -1,0 +1,93 @@
+# MakeTeXTemplete
+
+VSCode explorer's folder context menu can generate LaTeX starter files for paper and slide projects.
+
+## Commands
+
+- `MakePaperTemplete`
+- `MakeSlideTemplete`
+
+Right-click a folder in the explorer and run one of the commands above. The extension creates:
+
+- `.latexmkrc`
+- `main.tex`
+
+If either file already exists, the extension asks before overwriting it.
+
+## Custom Template Config
+
+Add this to `.vscode/settings.json` or your workspace `settings.json`:
+
+```json
+{
+  "makeTeXTemplete.templateConfigPath": "./examples/template-config.json"
+}
+```
+
+For most cases, folder copy is easier to manage. This is also supported:
+
+```json
+{
+  "makeTeXTemplete.templateConfigPath": "./examples/folder-template-config.json"
+}
+```
+
+With `templateDirectory`, every file under the template folder is copied into the folder you right-clicked:
+
+```json
+{
+  "paper": {
+    "templateDirectory": "./templates/paper"
+  },
+  "slide": {
+    "templateDirectory": "./templates/slide"
+  }
+}
+```
+
+This mode is recommended when you want to keep PDFs, images, `.bib`, or subfolders together with the template.
+
+The config file is JSON and can point to template files:
+
+```json
+{
+  "sharedAssets": [
+    {
+      "sourcePath": "./assets/references.bib",
+      "outputPath": "references.bib"
+    }
+  ],
+  "latexmkrc": {
+    "templatePath": "./templates/.latexmkrc"
+  },
+  "paper": {
+    "templatePath": "./templates/paper-main.tex",
+    "outputPath": "main.tex",
+    "assets": [
+      {
+        "sourcePath": "./assets/sample-figure.pdf",
+        "outputPath": "figures/sample-figure.pdf"
+      }
+    ]
+  },
+  "slide": {
+    "templatePath": "./templates/slide-main.tex",
+    "outputPath": "main.tex",
+    "assets": [
+      {
+        "sourcePath": "./assets/logo.pdf",
+        "outputPath": "assets/logo.pdf"
+      }
+    ]
+  }
+}
+```
+
+`templatePath` can be absolute or workspace-relative. If `makeTeXTemplete.templateConfigPath` is not set, built-in templates are used.
+`sharedAssets` copies files for both commands, and `assets` under `paper` / `slide` copies files only for that template. PDF and other binary files are copied as-is.
+
+## Development
+
+1. Run `npm install`
+2. Press `F5` in VSCode
+3. In the Extension Development Host, right-click a folder in the explorer

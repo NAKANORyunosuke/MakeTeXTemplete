@@ -1,0 +1,31 @@
+{
+  "sharedAssets": [
+    {
+      "sourcePath": "./examples/assets/references.bib",
+      "outputPath": "references.bib"
+    }
+  ],
+  "latexmkrc": {
+    "templatePath": "./examples/templates/.latexmkrc"
+  },
+  "paper": {
+    "templatePath": "./examples/templates/paper-main.tex",
+    "outputPath": "main.tex",
+    "assets": [
+      {
+        "sourcePath": "./examples/assets/sample-figure.txt",
+        "outputPath": "figures/sample-figure.txt"
+      }
+    ]
+  },
+  "slide": {
+    "templatePath": "./examples/templates/slide-main.tex",
+    "outputPath": "main.tex",
+    "assets": [
+      {
+        "sourcePath": "./examples/assets/logo.txt",
+        "outputPath": "assets/logo.txt"
+      }
+    ]
+  }
+}
