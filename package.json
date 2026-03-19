@@ -4,6 +4,11 @@
   "description": "Generate LaTeX paper and slide templates from the VSCode explorer context menu.",
   "version": "0.0.1",
   "publisher": "local",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NAKANORyunosuke/MakeTeXTemplete.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -19,10 +24,134 @@
     "configuration": {
       "title": "MakeTeXTemplete",
       "properties": {
+        "makeTeXTemplete.templateConfig": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "default": null,
+          "markdownDescription": "Inline template config. When set, this takes precedence over `makeTeXTemplete.templateConfigPath`. Relative paths are resolved from the workspace folder.",
+          "additionalProperties": false,
+          "properties": {
+            "sharedAssets": {
+              "type": "array",
+              "markdownDescription": "Files copied for both paper and slide templates.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "sourcePath"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "sourcePath": {
+                    "type": "string",
+                    "markdownDescription": "Path to a file to copy. Relative paths are resolved from the workspace folder."
+                  },
+                  "outputPath": {
+                    "type": "string",
+                    "markdownDescription": "Relative path under the target folder. Defaults to the source file name."
+                  }
+                }
+              }
+            },
+            "latexmkrc": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "templatePath": {
+                  "type": "string",
+                  "markdownDescription": "Path to a `.latexmkrc` template file. Relative paths are resolved from the workspace folder."
+                },
+                "outputPath": {
+                  "type": "string",
+                  "markdownDescription": "Relative output path in the target folder. Defaults to `.latexmkrc`."
+                }
+              }
+            },
+            "paper": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "templateDirectory": {
+                  "type": "string",
+                  "markdownDescription": "Copy every file under this directory into the target folder. When set, `templatePath`, `outputPath`, and `assets` for `paper` are ignored."
+                },
+                "templatePath": {
+                  "type": "string",
+                  "markdownDescription": "Path to the main paper template file. Relative paths are resolved from the workspace folder."
+                },
+                "outputPath": {
+                  "type": "string",
+                  "markdownDescription": "Relative output path for the paper template file. Defaults to `main.tex`."
+                },
+                "assets": {
+                  "type": "array",
+                  "markdownDescription": "Files copied only when the paper template command runs.",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "sourcePath"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "sourcePath": {
+                        "type": "string",
+                        "markdownDescription": "Path to a file to copy. Relative paths are resolved from the workspace folder."
+                      },
+                      "outputPath": {
+                        "type": "string",
+                        "markdownDescription": "Relative path under the target folder. Defaults to the source file name."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "slide": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "templateDirectory": {
+                  "type": "string",
+                  "markdownDescription": "Copy every file under this directory into the target folder. When set, `templatePath`, `outputPath`, and `assets` for `slide` are ignored."
+                },
+                "templatePath": {
+                  "type": "string",
+                  "markdownDescription": "Path to the main slide template file. Relative paths are resolved from the workspace folder."
+                },
+                "outputPath": {
+                  "type": "string",
+                  "markdownDescription": "Relative output path for the slide template file. Defaults to `main.tex`."
+                },
+                "assets": {
+                  "type": "array",
+                  "markdownDescription": "Files copied only when the slide template command runs.",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "sourcePath"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "sourcePath": {
+                        "type": "string",
+                        "markdownDescription": "Path to a file to copy. Relative paths are resolved from the workspace folder."
+                      },
+                      "outputPath": {
+                        "type": "string",
+                        "markdownDescription": "Relative path under the target folder. Defaults to the source file name."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "makeTeXTemplete.templateConfigPath": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to a JSON config file for custom template sources. Relative paths are resolved from the workspace folder."
+          "markdownDescription": "Path to a JSON config file for custom template sources. The config file path is resolved from the workspace folder. Paths inside the config file are resolved relative to the config file first, with workspace-relative fallback for compatibility."
         }
       }
     },

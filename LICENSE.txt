@@ -1,0 +1,7 @@
+Copyright (c) 2026 NAKANO Ryunosuke
+
+All rights reserved.
+
+This project is provided without a public license. No permission is granted to use,
+copy, modify, or distribute this software except with prior written permission from
+the copyright holder.

@@ -28,6 +28,11 @@ type TemplateConfigFile = {
   readonly slide?: TemplateSourceConfig;
 };
 
+type ResolvedTemplateConfig = {
+  readonly value?: TemplateConfigFile;
+  readonly resolvePathCandidates: (configuredPath: string) => readonly string[];
+};
+
 const CONFIG_SECTION = "makeTeXTemplete";
 
 const LATEXMKRC = String.raw`$latex = 'platex -synctex=1 -interaction=nonstopmode -file-line-error %O %S';
@@ -175,9 +180,9 @@ async function resolveTargetFolder(resource: vscode.Uri | undefined): Promise<vs
 
 async function buildOutputFiles(kind: TemplateKind, targetFolder: vscode.Uri): Promise<OutputFile[]> {
   const templateConfig = await loadTemplateConfig(targetFolder);
-  const sharedAssets = templateConfig?.sharedAssets ?? [];
-  const templateFiles = await resolveTemplateOutputs(kind, targetFolder, templateConfig);
-  const sharedAssetFiles = await Promise.all(sharedAssets.map((asset) => resolveAssetFile(targetFolder, asset)));
+  const sharedAssets = templateConfig.value?.sharedAssets ?? [];
+  const templateFiles = await resolveTemplateOutputs(kind, templateConfig);
+  const sharedAssetFiles = await Promise.all(sharedAssets.map((asset) => resolveAssetFile(templateConfig, asset)));
 
   const files = [...templateFiles, ...sharedAssetFiles];
 
@@ -204,21 +209,36 @@ async function findExistingFiles(folder: vscode.Uri, files: OutputFile[]): Promi
   return checks.filter((value): value is string => value !== undefined);
 }
 
-async function loadTemplateConfig(targetFolder: vscode.Uri): Promise<TemplateConfigFile | undefined> {
-  const configuredPath = vscode.workspace
-    .getConfiguration(CONFIG_SECTION, targetFolder)
-    .get<string>("templateConfigPath", "")
-    .trim();
+async function loadTemplateConfig(targetFolder: vscode.Uri): Promise<ResolvedTemplateConfig> {
+  const configuration = vscode.workspace.getConfiguration(CONFIG_SECTION, targetFolder);
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(targetFolder);
+  const workspaceBasePath = workspaceFolder?.uri.fsPath ?? targetFolder.fsPath;
+  const inlineConfig = configuration.get<TemplateConfigFile | null>("templateConfig", null);
 
-  if (!configuredPath) {
-    return undefined;
+  if (inlineConfig && typeof inlineConfig === "object") {
+    return {
+      value: inlineConfig,
+      resolvePathCandidates: (configuredPath) => buildPathCandidates(workspaceBasePath, configuredPath)
+    };
   }
 
-  const filePath = resolvePathFromWorkspace(targetFolder, configuredPath);
+  const configuredPath = configuration.get<string>("templateConfigPath", "").trim();
+  if (!configuredPath) {
+    return {
+      value: undefined,
+      resolvePathCandidates: (pathToResolve) => buildPathCandidates(workspaceBasePath, pathToResolve)
+    };
+  }
+
+  const filePath = resolvePathFromBase(workspaceBasePath, configuredPath);
   const fileContent = await readUtf8File(filePath);
 
   try {
-    return JSON.parse(fileContent) as TemplateConfigFile;
+    return {
+      value: JSON.parse(fileContent) as TemplateConfigFile,
+      resolvePathCandidates: (pathToResolve) =>
+        buildPathCandidates(path.dirname(filePath), pathToResolve, workspaceBasePath)
+    };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw new Error(`Could not parse template config file "${filePath}": ${reason}`);
@@ -226,7 +246,7 @@ async function loadTemplateConfig(targetFolder: vscode.Uri): Promise<TemplateCon
 }
 
 async function resolveTemplateFile(
-  targetFolder: vscode.Uri,
+  templateConfig: ResolvedTemplateConfig,
   key: TemplateKey,
   source: TemplateSourceConfig | undefined,
   fallbackContent: string
@@ -241,7 +261,7 @@ async function resolveTemplateFile(
     };
   }
 
-  const templatePath = resolvePathFromWorkspace(targetFolder, source.templatePath);
+  const templatePath = await resolveConfiguredPath(templateConfig, source.templatePath, vscode.FileType.File, "file");
 
   return {
     outputPath,
@@ -249,40 +269,46 @@ async function resolveTemplateFile(
   };
 }
 
-async function resolveTemplateOutputs(
-  kind: TemplateKind,
-  targetFolder: vscode.Uri,
-  templateConfig: TemplateConfigFile | undefined
-): Promise<OutputFile[]> {
-  const source = templateConfig?.[kind];
+async function resolveTemplateOutputs(kind: TemplateKind, templateConfig: ResolvedTemplateConfig): Promise<OutputFile[]> {
+  const source = templateConfig.value?.[kind];
   const templateDirectory = source?.templateDirectory?.trim();
 
   if (templateDirectory) {
-    const directoryPath = resolvePathFromWorkspace(targetFolder, templateDirectory);
+    const directoryPath = await resolveConfiguredPath(
+      templateConfig,
+      templateDirectory,
+      vscode.FileType.Directory,
+      "directory"
+    );
     return await readTemplateDirectory(directoryPath);
   }
 
   const kindAssets = source?.assets ?? [];
 
   return [
-    await resolveTemplateFile(targetFolder, "latexmkrc", templateConfig?.latexmkrc, LATEXMKRC),
+    await resolveTemplateFile(templateConfig, "latexmkrc", templateConfig.value?.latexmkrc, LATEXMKRC),
     await resolveTemplateFile(
-      targetFolder,
+      templateConfig,
       kind,
       source,
       kind === "paper" ? PAPER_MAIN_TEX : SLIDE_MAIN_TEX
     ),
-    ...(await Promise.all(kindAssets.map((asset) => resolveAssetFile(targetFolder, asset))))
+    ...(await Promise.all(kindAssets.map((asset) => resolveAssetFile(templateConfig, asset))))
   ];
 }
 
-async function resolveAssetFile(targetFolder: vscode.Uri, asset: AssetSourceConfig): Promise<OutputFile> {
+async function resolveAssetFile(templateConfig: ResolvedTemplateConfig, asset: AssetSourceConfig): Promise<OutputFile> {
   const sourcePath = asset.sourcePath.trim();
   if (!sourcePath) {
     throw new Error("Asset sourcePath must not be empty.");
   }
 
-  const resolvedSourcePath = resolvePathFromWorkspace(targetFolder, sourcePath);
+  const resolvedSourcePath = await resolveConfiguredPath(
+    templateConfig,
+    sourcePath,
+    vscode.FileType.File,
+    "file"
+  );
   const outputPath = asset.outputPath?.trim() || path.basename(resolvedSourcePath);
 
   return {
@@ -324,14 +350,72 @@ async function collectDirectoryFiles(
   }
 }
 
-function resolvePathFromWorkspace(targetFolder: vscode.Uri, configuredPath: string): string {
+function buildPathCandidates(
+  primaryBasePath: string,
+  configuredPath: string,
+  fallbackBasePath?: string
+): readonly string[] {
+  if (path.isAbsolute(configuredPath)) {
+    return [configuredPath];
+  }
+
+  const candidates = [path.resolve(primaryBasePath, configuredPath)];
+  if (fallbackBasePath) {
+    candidates.push(path.resolve(fallbackBasePath, configuredPath));
+  }
+
+  const seen = new Set<string>();
+  const uniqueCandidates: string[] = [];
+
+  for (const candidate of candidates) {
+    const normalizedCandidate = normalizeForComparison(path.normalize(candidate));
+    if (seen.has(normalizedCandidate)) {
+      continue;
+    }
+
+    seen.add(normalizedCandidate);
+    uniqueCandidates.push(candidate);
+  }
+
+  return uniqueCandidates;
+}
+
+function resolvePathFromBase(basePath: string, configuredPath: string): string {
   if (path.isAbsolute(configuredPath)) {
     return configuredPath;
   }
 
-  const workspaceFolder = vscode.workspace.getWorkspaceFolder(targetFolder);
-  const basePath = workspaceFolder?.uri.fsPath ?? targetFolder.fsPath;
   return path.resolve(basePath, configuredPath);
+}
+
+async function resolveConfiguredPath(
+  templateConfig: ResolvedTemplateConfig,
+  configuredPath: string,
+  expectedType: vscode.FileType,
+  kind: "file" | "directory"
+): Promise<string> {
+  const candidates = templateConfig.resolvePathCandidates(configuredPath);
+  let lastError: unknown;
+
+  for (const candidate of candidates) {
+    try {
+      const stat = await vscode.workspace.fs.stat(vscode.Uri.file(candidate));
+      if (stat.type & expectedType) {
+        return candidate;
+      }
+
+      lastError = new Error(`Path exists but is not a ${kind}: "${candidate}"`);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const reason = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(
+    `Could not resolve ${kind} path "${configuredPath}". Tried: ${candidates
+      .map((candidate) => `"${candidate}"`)
+      .join(", ")}. ${reason}`
+  );
 }
 
 function resolveOutputUri(targetFolder: vscode.Uri, configuredPath: string): vscode.Uri {
