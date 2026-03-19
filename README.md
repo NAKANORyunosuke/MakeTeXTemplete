@@ -12,7 +12,8 @@ Right-click a folder in the explorer and run one of the commands above. The exte
 - `.latexmkrc`
 - `main.tex`
 
-If either file already exists, the extension asks before overwriting it.
+If a `.tex` file already exists, the extension keeps it and does not overwrite it.
+Other existing files still ask before overwriting.
 
 ## Custom Template Config
 
