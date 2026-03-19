@@ -2,7 +2,7 @@
   "name": "make-tex-templete",
   "displayName": "MakeTeXTemplete",
   "description": "Generate LaTeX paper and slide templates from the VSCode explorer context menu.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "local",
   "license": "UNLICENSED",
   "repository": {
